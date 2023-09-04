@@ -22,7 +22,48 @@ public class TradeService {
 
 	@Autowired
 	TradeUpdateRepository tradeUpdateRepository;
+	public Trade combincationCheck(Trade trade){
+		//if(validateMaturityDate(trade)) {
 
+
+			boolean tradeStatus;
+			try {
+
+				Optional<Trade> exsitingTrade = tradeRepository.findByTradeId(trade.getTradeId());
+
+				if (exsitingTrade!=null && exsitingTrade.isPresent() && exsitingTrade.get().getTradeId()!=null ) {
+
+					boolean expCheck=validateMaturityDate(trade);
+
+					boolean versionCheck = validateVersion(trade,exsitingTrade.get());
+
+					 if(expCheck) {
+						 trade.setStatus("UPDATE");
+
+						if(versionCheck && trade.getVersion()!= exsitingTrade.get().getVersion()  )
+							trade.setStatus("UPDATE");
+						else  	 trade.setStatus("REJECT");
+					 }else {
+
+						 trade.setStatus("REJECT");
+					 }
+
+				}else{
+
+					tradeStatus= true;
+					trade.setStatus("INSERT");
+				}
+
+				//return trade;
+			}catch(Exception e) {
+				audit(trade);
+				log.error("Audit ?Exception Occured in isValid {}",Constants.ERROR,e.getMessage());
+				// throw new ApiRequestException(Constants.ERROR);
+			}
+		//}
+		 tradeUpdateRepository.tradeDetails(trade);
+		return trade;
+	}
 	public Object isValid(Trade trade){
 		if(validateMaturityDate(trade)) {
 			try {
@@ -43,6 +84,8 @@ public class TradeService {
 	/*validation 1  During transmission if the
 	lower version is being received by the store it will reject the trade and throw an exception.*/
 	private boolean validateVersion(Trade trade,Trade oldTrade) {
+
+
 		if(trade.getVersion() >= oldTrade.getVersion()){
 			return true;
 		}
